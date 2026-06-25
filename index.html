@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PRM 11/001 - Painel de Controle Consolidado</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+    body {
+        background-color: #f1f5f9;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        overflow: hidden;
+    }
+
+
+    .box-depth-3d {
+    /* Aumentei a distância da sombra (y) e a difusão (blur) para dar mais sensação de elevação */
+    filter: drop-shadow(0px 10px 15px rgba(0, 0, 0, 0.2));
+    border: 1px solid #e2e8f0;
+    }
+
+
+    .cartao-amarelo-branco {
+        background: linear-gradient(135deg, #fef08a 0%, #ffffff 100%);
+        border: 2px solid #facc15;
+    }
+
+
+    /* Nova animação para chamar a atenção */
+    @keyframes piscar-alerta {
+        0% { background-color: #fef08a; }
+        50% { background-color: #ffffff; }
+        100% { background-color: #fef08a; }
+    }
+
+
+    .animacao-alerta {
+        animation: piscar-alerta 2s infinite;
+        /* Mantém o limite do cartão mesmo quando pisca */
+        border: 2px solid #f5f50a;
+    }
+     </style>
+</head>
+<body class="p-3 h-screen flex flex-col justify-between box-border text-slate-900 selection:bg-emerald-500">
+
+
+    <div class="w-full max-w-[95%] mx-auto flex flex-col justify-between h-full space-y-2">
+       
+        <header class="text-center bg-slate-950 text-white rounded-xl py-3 px-6 shadow-md relative border-b-4 border-emerald-500 flex flex-col justify-center min-h-[70px]">
+            <h1 class="text-3xl md:text-4xl font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-200 to-emerald-500">
+                Painel Gerencial — PRM 11/001
+            </h1>
+            <p class="text-xs tracking-widest text-slate-400 uppercase font-bold mt-0.5">
+                Controle de Auditorias e Alistamento Militar • 11ª Região Militar
+            </p>
+            <div class="absolute top-1/2 right-6 -translate-y-1/2 text-xs bg-slate-800 px-3 py-1.5 rounded border border-slate-700 text-slate-300 font-mono flex items-center gap-2">
+                <i class="fa-solid fa-spinner fa-spin text-emerald-400" id="icone-status"></i>
+                <span id="data-atualizacao" class="text-xl font-bold italic">Conectando...</span>
+            </div>
+        </header>
+
+
+        <div class="grid grid-cols-1 xl:grid-cols-4 gap-3 items-stretch">
+           
+            <div class="xl:col-span-3 flex flex-col justify-between space-y-2">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <div class="animacao-alerta p-3 rounded-xl shadow-sm flex flex-col justify-between h-24">
+                        <span class="text-xs font-black text-slate-950 uppercase tracking-wider">Para Realizar</span>
+                        <div class="flex items-baseline justify-between">
+                            <span id="aud-para-realizar" class="text-6xl font-black text-slate-950 leading-none tracking-tighter">--</span>
+                            <i class="fa-solid fa-clock text-slate-950 text-3xl opacity-80"></i>
+                        </div>
+                    </div>
+                    <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between h-24 border-l-4 border-blue-500">
+                        <span class="text-xs font-black text-slate-500 uppercase tracking-wider">Realizadas Dia</span>
+                        <div class="flex items-baseline justify-between"><span id="aud-dia" class="text-6xl font-black text-blue-600 leading-none tracking-tighter">--</span><i class="fa-solid fa-calendar-day text-blue-200 text-3xl"></i></div>
+                    </div>
+                    <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between h-24 border-l-4 border-blue-500">
+                         <span class="text-xs font-black text-slate-500 uppercase tracking-wider">Realizadas Mês</span>
+                         <div class="flex items-baseline justify-between">
+                         <span id="aud-mes" class="text-6xl font-black text-blue-600">--</span>
+                         <i class="fa-solid fa-calendar-days text-blue-200 text-3xl"></i>
+                    </div>
+                    </div>
+                   
+                    <div id="cartao-assinaturas" class="animacao-alerta p-2.5 rounded-xl shadow-sm flex flex-col justify-between h-24">
+                        <span class="text-[12px] font-black text-slate-950 uppercase tracking-wider text-center block w-full border-b border-yellow-400 pb-0.5">Assinaturas Pendentes</span>
+                        <div class="grid grid-cols-2 gap-1 text-center h-full items-center mt-0.5">
+                        <div class="border-r border-yellow-400 px-1">
+                        <span id="ass-pend-del1" class="text-5xl font-black text-green-600 drop-shadow-[0_4px_6px_rgba(0,0,0,0.2)] block leading-none">--</span>
+                      </div>
+                      <div class="px-1">
+                      <span id="ass-pend-del2" class="text-5xl font-black text-orange-600 drop-shadow-[0_4px_6px_rgba(0,0,0,0.2)] block leading-none">--</span>
+                     </div>
+                    </div>
+                   </div>
+                </div>
+
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div class="bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-200 flex justify-between items-center h-12">
+                        <span class="text-base font-black text-slate-500 uppercase tracking-wide">Meta (Auditores):</span>
+                        <span class="text-5xl font-black text-emerald-600"><span id="meta-diaria">--</span> <span class="text-lg text-gray-400 font-bold">/ <span id="nr-auditores">--</span></span></span>
+                    </div>
+                    <div class="bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-200 flex justify-between items-center h-12">
+                        <span class="text-base font-black text-slate-500 uppercase tracking-wide">Total Auditorias Ano (Geral):</span>
+                        <span id="tot-aud-ano-geral" class="text-5xl font-black text-indigo-700">--</span>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="xl:col-span-1 flex flex-col justify-between gap-2">
+                <div class="bg-gradient-to-br from-teal-600 to-teal-700 text-white px-4 py-3 rounded-xl shadow-sm flex justify-between items-center h-[62px]">
+                    <div>
+                        <span class="text-[10px] font-black text-teal-100 uppercase block tracking-wider">Arrecadado Mês</span>
+                        <h3 id="arr-mes" class="text-4xl font-black tracking-tight">R$ --</h3>
+                    </div>
+                    <i class="fa-solid fa-calendar-check text-2xl text-teal-200 opacity-40"></i>
+                </div>
+                <div class="bg-gradient-to-br from-slate-700 to-slate-900 text-white px-4 py-3 rounded-xl shadow-sm flex justify-between items-center h-[62px]">
+                    <div>
+                        <span class="text-[10px] font-black text-slate-300 uppercase block tracking-wider">Arrecadado Ano</span>
+                        <h3 id="arr-soma-total" class="text-4xl font-black tracking-tight">R$ --</h3>
+                    </div>
+                    <i class="fa-solid fa-vault text-2xl text-slate-400 opacity-40"></i>
+                </div>
+            </div>
+
+
+        </div>
+
+
+        <div class="bg-white p-4 rounded-xl border border-gray-200 box-depth-3d flex-grow flex flex-col justify-between min-h-[240px] max-h-[310px]">
+            <h3 class="text-base font-black text-slate-900 uppercase tracking-widest mb-1"><i class="fa-solid fa-users-gear mr-1 text-blue-500"></i>Auditorias Diárias por Militar</h3>
+            <div class="relative w-full flex-grow h-[200px]">
+                <canvas id="chartAuditoresDia"></canvas>
+            </div>
+        </div>
+
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 items-stretch min-h-[200px] max-h-[250px]">
+           
+            <div class="bg-blue-50 p-3.5 rounded-xl border border-blue-200 flex flex-col justify-between shadow-sm box-depth-3d">
+                <div class="space-y-1">
+                    <h2 class="text-base font-black text-blue-800 uppercase tracking-widest"><i class="fa-solid fa-file-signature mr-1 text-blue-500"></i> Consolidação de Assinaturas</h2>
+                    <div class="space-y-1.5">
+                        <div class="bg-green-500 p-2.5 rounded-lg flex justify-between text-sm border-l-4 border-green-400 shadow-inner">
+                            <span class="text-green-900 font-bold">Acumulado Mês - Del 01</span>
+                            <span id="del1-mes" class="font-black text-green-950 text-xl">--</span>
+                        </div>
+                        <div class="bg-yellow-300 p-2.5 rounded-lg flex justify-between text-sm border-l-4 border-yellow-400 shadow-inner">
+                            <span class="text-blue-900 font-bold">Acumulado Mês - Del 02</span>
+                            <span id="del2-mes" class="font-black text-blue-950 text-xl">--</span>
+                        </div>
+                        <div class="bg-blue-100 p-2.5 rounded-lg flex justify-between text-sm border-l-4 border-blue-400 shadow-inner">
+                            <span class="text-blue-900 font-bold">Acumulado Mês - Mobilizador</span>
+                            <span id="mobilizador-mes" class="font-black text-blue-950 text-xl">--</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-blue-200 p-2.5 rounded-lg border border-blue-300 text-center shadow-inner mt-1">
+                    <span class="text-blue-800 block text-[10px] font-black uppercase tracking-wider leading-none">Total Assinados Geral (Ano)</span>
+                    <span id="tot-ass-ano-geral" class="text-4xl font-black text-blue-900 leading-tight">--</span>
+                </div>
+            </div>
+
+
+            <div class="bg-white p-3.5 rounded-xl border border-gray-200 box-depth-3d flex flex-col justify-between">
+                <h3 class="text-base font-black text-slate-800 uppercase tracking-widest"><i class="fa-solid fa-chart-pie mr-1 text-emerald-500"></i>Assinados no Dia</h3>
+                <div class="relative w-full flex-grow h-32 flex justify-center mt-1">
+                    <canvas id="chartAssinadosDia"></canvas>
+                </div>
+            </div>
+
+
+            <div class="bg-white p-3.5 rounded-xl border border-gray-200 box-depth-3d flex flex-col justify-between">
+                <h3 class="text-base font-black text-slate-800 uppercase tracking-widest mb-1"><i class="fa-solid fa-id-card mr-1 text-purple-500"></i>Alistamentos por Delegado</h3>
+                <div class="overflow-y-auto border border-gray-200 rounded-lg bg-white shadow-inner flex-grow h-32 p-0.5">
+                    <table class="min-w-full divide-y divide-gray-200 text-lg text-left text-slate-800">
+                        <thead>
+                            <tr class="bg-slate-900 text-white font-black uppercase tracking-wider sticky top-0 border-b border-gray-300">
+                                <th class="px-2 py-2 rounded-l-md">Descrição / Categoria</th>
+                                <th class="px-2 py-2 text-center bg-green-600 text-white border-r border-slate-800">Del 01</th>
+                                <th class="px-2 py-2 text-center bg-yellow-400 text-slate-950 rounded-r-md">Del 02</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 font-bold">
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-2 py-1.5 text-slate-600 font-bold">SMIO - Alistamento MT</td>
+                                <td id="row-mt-d1" class="px-2 py-1.5 text-center text-slate-950 bg-green-50/20">--</td>
+                                <td id="row-mt-d2" class="px-2 py-1.5 text-center text-slate-950 bg-yellow-100/50 font-black">--</td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-2 py-1.5 text-slate-600 font-bold">SMIO - Alistamentos MNT</td>
+                                <td id="row-mnt-d1" class="px-2 py-1.5 text-center text-slate-950 bg-green-50/20">--</td>
+                                <td id="row-mnt-d2" class="px-2 py-1.5 text-center text-slate-950 bg-yellow-100/50 font-black">--</td>
+                            </tr>
+                            <tr class="bg-slate-200 font-black border-y border-gray-300">
+                                <td class="px-2 py-1.5 text-slate-900 uppercase">SMIO - Total</td>
+                                <td id="row-smio-tot-d1" class="px-2 py-1.5 text-center text-slate-950">--</td>
+                                <td id="row-smio-tot-d2" class="px-2 py-1.5 text-center text-slate-950 bg-yellow-200 font-black">--</td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-2 py-1.5 text-slate-600 font-bold">SMIF - Alistamentos MT</td>
+                                <td id="row-smif-d1" class="px-2 py-1.5 text-center text-slate-950 bg-green-50/20">--</td>
+                                <td id="row-smif-d2" class="px-2 py-1.5 text-center text-slate-950 bg-yellow-100/50 font-black">--</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+
+        </div>
+
+
+    </div>
+
+
+    <script>
+        Chart.register(ChartDataLabels);
+
+
+        let chart1 = null, chart2 = null;
+        let emExecucao = false;
+
+
+        function receberDadosDoGoogle(pacoteDados) {
+            emExecucao = false;
+            try {
+                if (!pacoteDados || !pacoteDados.relatorio) {
+                    document.getElementById('data-atualizacao').innerText = "Dados Inválidos!";
+                    return;
+                }
+
+
+                const icone = document.getElementById('icone-status');
+                icone.className = "fa-solid fa-circle-check text-emerald-400 animate-none";
+
+
+                const matrizRelatorio = pacoteDados.relatorio;
+
+
+                const dicionario = {};
+                matrizRelatorio.forEach(l => {
+                    if (l[0]) {
+                        const chave = l[0].toLowerCase().replace(/\s+/g, ' ').trim();
+                        dicionario[chave] = l;
+                    }
+                });
+
+
+                function buscarValor(nomeChave, indexColuna = 1, padrao = '0', ehMonetario = false) {
+                    const chaveFiltro = nomeChave.toLowerCase().replace(/\s+/g, ' ').trim();
+                    if (dicionario[chaveFiltro] && dicionario[chaveFiltro][indexColuna] !== undefined && dicionario[chaveFiltro][indexColuna] !== '') {
+                        let valorBruto = dicionario[chaveFiltro][indexColuna].toString().trim();
+                       
+                        if (ehMonetario) {
+                            if (valorBruto.includes('R$')) return valorBruto;
+                            let n = parseFloat(valorBruto.replace(/[^\d.,-]/g, '').replace(',', '.'));
+                            return isNaN(n) ? padrao : "R$ " + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        }
+                       
+                        let numeroTratado = parseFloat(valorBruto);
+                        if (!isNaN(numeroTratado)) {
+                            return Math.round(numeroTratado).toString();
+                        }
+                        return valorBruto;
+                    }
+                    return padrao;
+                }
+
+
+                if (matrizRelatorio[0] && matrizRelatorio[0][4]) {
+                    document.getElementById('data-atualizacao').innerText = "DATA " + matrizRelatorio[0][4];
+                } else {
+                    document.getElementById('data-atualizacao').innerText = new Date().toLocaleDateString('pt-BR');
+                }
+
+
+                document.getElementById('aud-para-realizar').innerText = buscarValor('Auditorias para realizar', 1, '0');
+                document.getElementById('aud-dia').innerText           = buscarValor('Auditorias Realizadas Dia', 1, '0');
+                document.getElementById('aud-mes').innerText           = buscarValor('Auditorias Realizadas Mês', 1, '0');
+               
+                document.getElementById('ass-pend-del1').innerText     = buscarValor('Assinaturas à realizar', 1, '0');
+                document.getElementById('ass-pend-del2').innerText     = buscarValor('Assinaturas à realizar', 2, '0');
+
+
+                document.getElementById('meta-diaria').innerText        = buscarValor('Meta Diária', 1, '0');
+                document.getElementById('nr-auditores').innerText       = buscarValor('Nr de Auditores', 1, '0');
+                document.getElementById('tot-aud-ano-geral').innerText = buscarValor('Total Auditorias Ano', 1, '0');
+
+
+                document.getElementById('arr-mes').innerText        = buscarValor('Valor Arrecadado', 2, 'R$ 0,00', true);
+                document.getElementById('arr-soma-total').innerText = buscarValor('Soma Total', 3, 'R$ 0,00', true);
+
+
+                document.getElementById('del1-mes').innerText       = buscarValor('Assinados Mês', 1, '0');
+                document.getElementById('del2-mes').innerText       = buscarValor('Assinados Mês', 2, '0');
+                document.getElementById('mobilizador-mes').innerText = buscarValor('Assinados Mês', 3, '0');
+
+
+                // Lógica Dinâmica Total Geral Assinaturas
+                let indiceColunaTotal = 4;
+                let valorTotalGeral = '0';
+                for (let r = matrizRelatorio.length - 1; r >= 0; r--) {
+                    let celula = matrizRelatorio[r][indiceColunaTotal];
+                    if (celula !== undefined && celula !== null && celula !== '') {
+                        let numTratado = parseFloat(celula);
+                        valorTotalGeral = !isNaN(numTratado) ? Math.round(numTratado).toString() : celula.toString();
+                        break;
+                    }
+                }
+                document.getElementById('tot-ass-ano-geral').innerText = buscarValor('Total Assinados Ano', 4, '0');
+
+
+                // Tabela de Alistamentos
+                document.getElementById('row-mt-d1').innerText  = buscarValor('SMIO - Alistamento MT', 1, '0');
+                document.getElementById('row-mt-d2').innerText  = buscarValor('SMIO - Alistamento MT', 2, '0');
+                document.getElementById('row-mnt-d1').innerText = buscarValor('SMIO - Alistamentos MNT', 1, '0');
+                document.getElementById('row-mnt-d2').innerText = buscarValor('SMIO - Alistamentos MNT', 2, '0');
+                document.getElementById('row-smio-tot-d1').innerText = buscarValor('SMIO - Total', 1, '0');
+                document.getElementById('row-smio-tot-d2').innerText = buscarValor('SMIO - Total', 2, '0');
+                document.getElementById('row-smif-d1').innerText = buscarValor('SMIF - Alistamentos MT', 1, '0');
+                document.getElementById('row-smif-d2').innerText = buscarValor('SMIF - Alistamentos MT', 2, '0');
+
+
+                // Lendo linha por linha os Auditores
+                let labelsAuditores = [];
+                let valoresAuditores = [];
+                let rIdx = -1;
+                let cIdx = -1;
+
+
+                for (let r = 0; r < matrizRelatorio.length; r++) {
+                    for (let c = 0; c < matrizRelatorio[r].length; c++) {
+                        if (matrizRelatorio[r][c] && matrizRelatorio[r][c].toString().trim() === "Auditores PRM") {
+                            rIdx = r;
+                            cIdx = c;
+                            break;
+                        }
+                    }
+                    if (rIdx !== -1) break;
+                }
+
+
+                if (rIdx !== -1) {
+                    for (let i = rIdx + 1; i < matrizRelatorio.length; i++) {
+                        let nome = matrizRelatorio[i][cIdx];    
+                        let valor = matrizRelatorio[i][cIdx + 1];
+                        if (!nome || nome.toString().trim() === "") break;
+                        labelsAuditores.push(nome.toString().trim());
+                        valoresAuditores.push(Math.round(parseFloat(valor)) || 0);
+                    }
+                }
+
+
+                if (labelsAuditores.length === 0) {
+                    labelsAuditores = ['TC Castilho', 'Cap Inchauspe', 'Ten Moretti', 'Ten Luciano', 'Ten Lourenço', 'Ten Ferreira', 'ST Adilio', 'Sgt Alencar', 'Sgt Duim', 'Cb Jobert', 'Sd Nathan', 'Sd Maxsswel', 'Sd Raí'];
+                    valoresAuditores = [7, 10, 0, 0, 0, 14, 8, 12, 15, 6, 9, 11, 5];
+                }
+
+
+                let d1DiaLimpo = Math.round(parseFloat(buscarValor('Assinados Dia', 1, '0'))) || 0;
+                let d2DiaLimpo = Math.round(parseFloat(buscarValor('Assinados Dia', 2, '0'))) || 0;
+                atualizarOuCriarGraficos(valoresAuditores, labelsAuditores, d1DiaLimpo, d2DiaLimpo);
+
+
+            } catch (erro) {
+                console.error(erro);
+                document.getElementById('data-atualizacao').innerText = "Erro ao processar!";
+            }
+        }
+
+
+        // --- VERSÃO HÍBRIDA DO ADAPTADOR ---
+async function acionarRequisicaoInterna() {
+    // Substitua sua URL atual por esta:
+const URL_BACKEND = "https://api.allorigins.win/get?url=" + encodeURIComponent("https://script.google.com/macros/s/AKfycbw8AdPR9CmBc6M1SG4r8O-4lQ7F-3WZO9I_ow28B1gu/exec?dados=true");
+
+// E no seu código de fetch, você precisa tratar o JSON que ele devolve:
+async function acionarRequisicaoInterna() {
+    try {
+        const resposta = await fetch(URL_BACKEND);
+        const wrapper = await resposta.json(); // O allorigins devolve um objeto com a propriedade .contents
+        const pacote = JSON.parse(wrapper.contents); // Aqui extraímos o seu JSON real
+        
+        renderizarInterface(pacote); 
+    } catch (erro) {
+        console.error("Erro:", erro);
+    }
+}
+
+        function atualizarOuCriarGraficos(valoresAuditores, labelsAuditores, valD1, valD2) {
+            const coresDelegados = ['#81C784', '#FFF176'];
+            const coresBordas3D = ['#16a34a', '#ca8a04'];
+
+
+            // 1. GRÁFICO DE PIZZA
+            if (chart1 === null) {
+                const ctx1 = document.getElementById('chartAssinadosDia').getContext('2d');
+                chart1 = new Chart(ctx1, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Delegado 01', 'Delegado 02'],
+                        datasets: [{
+                            data: [valD1, valD2],
+                            backgroundColor: coresDelegados,
+                            borderColor: coresBordas3D,
+                            borderWidth: 2.0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '25%',
+                        plugins: {
+                            legend: { position: 'bottom', labels: { font: { size: 25, weight: 'bold' }, boxWidth: 25 } },
+                            datalabels: {
+                                display: true,
+                                color: '#0f172a',
+                                font: { size: 25, weight: 'black' },
+                                formatter: function(value) { return value > 0 ? value : ''; }
+                            }
+                        }
+                    }
+                });
+            } else {
+                chart1.data.datasets[0].data = [valD1, valD2];
+                chart1.update('none');
+            }
+
+
+            // 2. GRÁFICO DE BARRAS DOS AUDITORES
+            if (chart2 === null) {
+                const ctx2 = document.getElementById('chartAuditoresDia').getContext('2d');
+                const gradienteBarra = ctx2.createLinearGradient(0, 0, 0, 180);
+                gradienteBarra.addColorStop(0, '#60a5fa');  
+                gradienteBarra.addColorStop(1, '#1d4ed8');  
+
+
+                chart2 = new Chart(ctx2, {
+                    type: 'bar',
+                    data: {
+                        labels: labelsAuditores,
+                        datasets: [{
+                            data: valoresAuditores,
+                            backgroundColor: gradienteBarra,
+                            borderColor: '#1e40af',
+                            borderWidth: 3,
+                            borderRadius: 3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        autoPadding: true,
+                        plugins: {
+                            legend: { display: false },
+                            datalabels: {
+                                display: true,
+                                anchor: 'center',  
+                                align: 'center',  
+                                offset: 0,        
+                                color: '#ffffff',  
+                                font: { size: 30, weight: 'black' },
+                                formatter: function(value) { return value > 0 ? value : ''; }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                display: false,
+                                beginAtZero: true
+                            },
+                            x: {
+                                ticks: { maxRotation: 0, minRotation: 0, font: { size: 14, weight: 'bold' }, color: '#0f172a' }
+                            }
+                        }
+                    }
+                });
+            } else {
+                chart2.data.labels = labelsAuditores;
+                chart2.data.datasets[0].data = valoresAuditores;
+               
+                // Forçamos a reescrita completa das opções do plugin para não haver falhas
+                chart2.options.plugins.datalabels = {
+                    display: true,
+                    anchor: 'center',
+                    align: 'top',
+                    offset: 0,
+                    color: '#000000', /* AMARELO FORTE para teste */
+                    font: {
+                        size:48, /* TAMANHO 38 */
+                        family: "'Segoe UI', Tahoma, sans-serif",
+                        weight: '900'
+                    },
+                    formatter: function(value) { return value > 0 ? value : ''; }
+                };
+               
+                chart2.update('none');
+            }
+        }
+
+
+        window.addEventListener('DOMContentLoaded', acionarRequisicaoInterna);
+        function cicloSeguro() {
+    acionarRequisicaoInterna();
+    setTimeout(cicloSeguro, 5000); // Aguarda 60 segundos antes da próxima execução
+}
+window.addEventListener('DOMContentLoaded', cicloSeguro);
+    </script>
+</body>
+</html>
