@@ -378,22 +378,37 @@
 
 
         // --- VERSÃO HÍBRIDA DO ADAPTADOR ---
-async function acionarRequisicaoInterna() {
-    // Substitua sua URL atual por esta:
-const URL_BACKEND = "https://api.allorigins.win/get?url=" + encodeURIComponent("https://script.google.com/macros/s/AKfycbw8AdPR9CmBc6M1SG4r8O-4lQ7F-3WZO9I_ow28B1gu/exec?dados=true");
+<script>
+    // 1. A URL do seu Web App (do Google Script)
+    const URL_BACKEND = "https://script.google.com/macros/s/AKfycbw8AdPR9CmBc6M1SG4r8O-4lQ7F-3WZO9I_ow28B1gu/exec?dados=true";
 
-// E no seu código de fetch, você precisa tratar o JSON que ele devolve:
-async function acionarRequisicaoInterna() {
-    try {
-        const resposta = await fetch(URL_BACKEND);
-        const wrapper = await resposta.json(); // O allorigins devolve um objeto com a propriedade .contents
-        const pacote = JSON.parse(wrapper.contents); // Aqui extraímos o seu JSON real
-        
-        renderizarInterface(pacote); 
-    } catch (erro) {
-        console.error("Erro:", erro);
+    async function acionarRequisicaoInterna() {
+        try {
+            document.getElementById('status').innerText = "Buscando dados...";
+            
+            // Faz a requisição para o Google Apps Script
+            const resposta = await fetch(URL_BACKEND);
+            
+            if (!resposta.ok) throw new Error("Erro de servidor");
+            
+            const pacote = await resposta.json();
+            
+            // O pacote.relatorio contém a matriz de dados da planilha
+            renderizarInterface(pacote);
+            
+            document.getElementById('status').innerText = "Atualizado às " + new Date().toLocaleTimeString();
+        } catch (erro) {
+            console.error("Erro na busca:", erro);
+            document.getElementById('status').innerText = "Erro de Conexão. Verifique o Console (F12).";
+            // Tenta novamente após 30 segundos
+            setTimeout(acionarRequisicaoInterna, 30000);
+        }
     }
-}
+
+    // Inicia o processo
+    acionarRequisicaoInterna();
+    setInterval(acionarRequisicaoInterna, 30000);
+</script>
 
         function atualizarOuCriarGraficos(valoresAuditores, labelsAuditores, valD1, valD2) {
             const coresDelegados = ['#81C784', '#FFF176'];
