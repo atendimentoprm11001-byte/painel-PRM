@@ -271,19 +271,18 @@
     }
 
     // --- FUNÇÃO PARA RODAR NO GITHUB/OUTROS ---
-    function rodarNoGitHub() {
-        fetch(URL_API)
-            .then(response => {
-                if (!response.ok) throw new Error("Falha na rede");
-                return response.json();
-            })
-            .then(data => receberDadosDoGoogle(data))
-            .catch(error => {
-                emExecucao = false;
-                console.error("Erro no GitHub:", error);
-                if(document.getElementById('data-atualizacao')) document.getElementById('data-atualizacao').innerText = "Erro no GitHub...";
-            });
-    }
+   // MODO GITHUB: Busca o arquivo dentro do próprio repositório
+function rodarNoGitHub() {
+    // Esse arquivo 'dados.json' deve existir na raiz do seu repositório no GitHub
+    fetch('dados.json') 
+        .then(response => response.json())
+        .then(data => receberDadosDoGoogle(data))
+        .catch(error => {
+            emExecucao = false;
+            console.error("Erro ao ler JSON local:", error);
+            document.getElementById('data-atualizacao').innerText = "Erro ao carregar dados locais";
+        });
+}
 
     // --- FUNÇÃO DE CONTROLE ---
     function acionarRequisicaoInterna() {
