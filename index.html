@@ -251,14 +251,41 @@
 
 <script>
     // --- CONFIGURAÇÃO ---
-    // Substitua pela URL da sua implantação do Google Apps Script
     const URL_API = "https://script.google.com/macros/s/AKfycbw8AdPR9CmBc6M1SG4r8O-4lQ7F-3WZO9I_ow28B1gu/exec?modo=api";
 
     Chart.register(ChartDataLabels);
     let chart1 = null, chart2 = null;
     let emExecucao = false;
 
-    // --- FUNÇÃO PRINCIPAL DE REQUISIÇÃO (HÍBRIDA) ---
+    // --- FUNÇÃO PARA RODAR DENTRO DO GOOGLE ---
+    function rodarNoGoogle() {
+        if (typeof google !== 'undefined' && google.script) {
+            google.script.run
+                .withSuccessHandler(receberDadosDoGoogle)
+                .withFailureHandler(() => { 
+                    emExecucao = false; 
+                    if(document.getElementById('data-atualizacao')) document.getElementById('data-atualizacao').innerText = "Erro Google..."; 
+                })
+                .obterDadosEmTempoReal();
+        }
+    }
+
+    // --- FUNÇÃO PARA RODAR NO GITHUB/OUTROS ---
+    function rodarNoGitHub() {
+        fetch(URL_API)
+            .then(response => {
+                if (!response.ok) throw new Error("Falha na rede");
+                return response.json();
+            })
+            .then(data => receberDadosDoGoogle(data))
+            .catch(error => {
+                emExecucao = false;
+                console.error("Erro no GitHub:", error);
+                if(document.getElementById('data-atualizacao')) document.getElementById('data-atualizacao').innerText = "Erro no GitHub...";
+            });
+    }
+
+    // --- FUNÇÃO DE CONTROLE ---
     function acionarRequisicaoInterna() {
         if (emExecucao) return;
         emExecucao = true;
@@ -266,31 +293,11 @@
         const icone = document.getElementById('icone-status');
         if (icone) icone.className = "fa-solid fa-spinner fa-spin text-emerald-400";
 
-        // VERIFICAÇÃO MAIS SEGURA:
-        // Se a URL não for a do Google ou se o ambiente não for o do script, force o fetch
-        const isGoogleEnvironment = (typeof google !== 'undefined' && google.script);
-
-        if (isGoogleEnvironment) {
-            google.script.run
-                .withSuccessHandler(receberDadosDoGoogle)
-                .withFailureHandler(() => { 
-                    emExecucao = false; 
-                    document.getElementById('data-atualizacao').innerText = "Erro Google..."; 
-                })
-                .obterDadosEmTempoReal();
+        // Se o objeto 'google' existe, use a função do Google, senão use o fetch
+        if (typeof google !== 'undefined' && google.script) {
+            rodarNoGoogle();
         } else {
-            // MODO GITHUB / NAVEGADOR
-            fetch(URL_API)
-                .then(response => {
-                    if (!response.ok) throw new Error("Falha na rede");
-                    return response.json();
-                })
-                .then(data => receberDadosDoGoogle(data))
-                .catch(error => {
-                    emExecucao = false;
-                    console.error("Erro no GitHub:", error);
-                    document.getElementById('data-atualizacao').innerText = "Erro no GitHub...";
-                });
+            rodarNoGitHub();
         }
     }
 
@@ -320,7 +327,7 @@
                 return padrao;
             }
 
-            // Atualização de elementos
+            // Atualização da UI
             document.getElementById('data-atualizacao').innerText = (matrizRelatorio[0] && matrizRelatorio[0][4]) ? "DATA " + matrizRelatorio[0][4] : new Date().toLocaleDateString('pt-BR');
             document.getElementById('aud-para-realizar').innerText = buscarValor('Auditorias para realizar');
             document.getElementById('aud-dia').innerText = buscarValor('Auditorias Realizadas Dia');
@@ -349,7 +356,6 @@
             atualizarOuCriarGraficos([7, 10, 0, 0, 0, 14, 8, 12, 15, 6, 9, 11, 5], 
                                      ['TC Castilho', 'Cap Inchauspe', 'Ten Moretti', 'Ten Luciano', 'Ten Lourenço', 'Ten Ferreira', 'ST Adilio', 'Sgt Alencar', 'Sgt Duim', 'Cb Jobert', 'Sd Nathan', 'Sd Maxsswel', 'Sd Raí'], 
                                      parseInt(buscarValor('Assinados Dia', 1)), parseInt(buscarValor('Assinados Dia', 2)));
-
         } catch (e) { console.error(e); }
     }
 
@@ -367,7 +373,7 @@
     // --- INICIALIZAÇÃO ---
     window.addEventListener('DOMContentLoaded', () => {
         acionarRequisicaoInterna();
-        setInterval(acionarRequisicaoInterna, 10000);
+        setInterval(acionarRequisicaoInterna, 60000);
     });
 </script>
 </body>
