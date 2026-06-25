@@ -249,380 +249,119 @@
     </div>
 
 
+<script>
+    // --- CONFIGURAÇÃO ---
+    // Substitua pela URL da sua implantação do Google Apps Script
+    const URL_API = "https://script.google.com/macros/s/AKfycbw8AdPR9CmBc6M1SG4r8O-4lQ7F-3WZO9I_ow28B1gu/exec?modo=api";
 
+    Chart.register(ChartDataLabels);
+    let chart1 = null, chart2 = null;
+    let emExecucao = false;
 
-   <script>
-    // URL gerada após a implantação do App da Web no Google
-    const URL_API = "COLE_AQUI_A_URL_DO_SEU_WEB_APP_GERADA_NO_PASSO_ANTERIOR?modo=api";
-
+    // --- FUNÇÃO PRINCIPAL DE REQUISIÇÃO (HÍBRIDA) ---
     function acionarRequisicaoInterna() {
-        // Verifica se estamos rodando dentro do Google ou no GitHub
+        if (emExecucao) return;
+        emExecucao = true;
+        
+        const icone = document.getElementById('icone-status');
+        if (icone) icone.className = "fa-solid fa-spinner fa-spin text-emerald-400";
+
+        // Verifica se roda dentro do Google ou via GitHub
         if (typeof google !== 'undefined' && google.script) {
-            // MODO GOOGLE: usa o canal interno (rápido)
             google.script.run
                 .withSuccessHandler(receberDadosDoGoogle)
                 .withFailureHandler(() => { 
+                    emExecucao = false; 
                     document.getElementById('data-atualizacao').innerText = "Erro Google..."; 
                 })
                 .obterDadosEmTempoReal();
         } else {
-            // MODO GITHUB: usa a API externa via Fetch
             fetch(URL_API)
-                .then(response => {
-                    if (!response.ok) throw new Error("Falha na rede");
-                    return response.json();
-                })
+                .then(response => response.json())
                 .then(data => receberDadosDoGoogle(data))
                 .catch(error => {
-                    console.error("Erro ao buscar API:", error);
+                    emExecucao = false;
                     document.getElementById('data-atualizacao').innerText = "Erro no GitHub...";
                 });
         }
     }
 
-    // Inicialização segura
+    // --- PROCESSAMENTO DE DADOS ---
+    function receberDadosDoGoogle(pacoteDados) {
+        emExecucao = false;
+        try {
+            if (!pacoteDados || !pacoteDados.relatorio) return;
+
+            document.getElementById('icone-status').className = "fa-solid fa-circle-check text-emerald-400 animate-none";
+            const matrizRelatorio = pacoteDados.relatorio;
+            const dicionario = {};
+            
+            matrizRelatorio.forEach(l => { if (l[0]) dicionario[l[0].toLowerCase().replace(/\s+/g, ' ').trim()] = l; });
+
+            function buscarValor(nomeChave, indexColuna = 1, padrao = '0', ehMonetario = false) {
+                const c = nomeChave.toLowerCase().replace(/\s+/g, ' ').trim();
+                if (dicionario[c] && dicionario[c][indexColuna] !== undefined && dicionario[c][indexColuna] !== '') {
+                    let v = dicionario[c][indexColuna].toString().trim();
+                    if (ehMonetario) {
+                        if (v.includes('R$')) return v;
+                        let n = parseFloat(v.replace(/[^\d.,-]/g, '').replace(',', '.'));
+                        return isNaN(n) ? padrao : "R$ " + n.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                    }
+                    return !isNaN(parseFloat(v)) ? Math.round(parseFloat(v)).toString() : v;
+                }
+                return padrao;
+            }
+
+            // Atualização de elementos
+            document.getElementById('data-atualizacao').innerText = (matrizRelatorio[0] && matrizRelatorio[0][4]) ? "DATA " + matrizRelatorio[0][4] : new Date().toLocaleDateString('pt-BR');
+            document.getElementById('aud-para-realizar').innerText = buscarValor('Auditorias para realizar');
+            document.getElementById('aud-dia').innerText = buscarValor('Auditorias Realizadas Dia');
+            document.getElementById('aud-mes').innerText = buscarValor('Auditorias Realizadas Mês');
+            document.getElementById('ass-pend-del1').innerText = buscarValor('Assinaturas à realizar', 1);
+            document.getElementById('ass-pend-del2').innerText = buscarValor('Assinaturas à realizar', 2);
+            document.getElementById('meta-diaria').innerText = buscarValor('Meta Diária');
+            document.getElementById('nr-auditores').innerText = buscarValor('Nr de Auditores');
+            document.getElementById('tot-aud-ano-geral').innerText = buscarValor('Total Auditorias Ano');
+            document.getElementById('arr-mes').innerText = buscarValor('Valor Arrecadado', 2, 'R$ 0,00', true);
+            document.getElementById('arr-soma-total').innerText = buscarValor('Soma Total', 3, 'R$ 0,00', true);
+            document.getElementById('del1-mes').innerText = buscarValor('Assinados Mês', 1);
+            document.getElementById('del2-mes').innerText = buscarValor('Assinados Mês', 2);
+            document.getElementById('mobilizador-mes').innerText = buscarValor('Assinados Mês', 3);
+            document.getElementById('tot-ass-ano-geral').innerText = buscarValor('Total Assinados Ano', 4);
+            
+            document.getElementById('row-mt-d1').innerText = buscarValor('SMIO - Alistamento MT', 1);
+            document.getElementById('row-mt-d2').innerText = buscarValor('SMIO - Alistamento MT', 2);
+            document.getElementById('row-mnt-d1').innerText = buscarValor('SMIO - Alistamentos MNT', 1);
+            document.getElementById('row-mnt-d2').innerText = buscarValor('SMIO - Alistamentos MNT', 2);
+            document.getElementById('row-smio-tot-d1').innerText = buscarValor('SMIO - Total', 1);
+            document.getElementById('row-smio-tot-d2').innerText = buscarValor('SMIO - Total', 2);
+            document.getElementById('row-smif-d1').innerText = buscarValor('SMIF - Alistamentos MT', 1);
+            document.getElementById('row-smif-d2').innerText = buscarValor('SMIF - Alistamentos MT', 2);
+
+            atualizarOuCriarGraficos([7, 10, 0, 0, 0, 14, 8, 12, 15, 6, 9, 11, 5], 
+                                     ['TC Castilho', 'Cap Inchauspe', 'Ten Moretti', 'Ten Luciano', 'Ten Lourenço', 'Ten Ferreira', 'ST Adilio', 'Sgt Alencar', 'Sgt Duim', 'Cb Jobert', 'Sd Nathan', 'Sd Maxsswel', 'Sd Raí'], 
+                                     parseInt(buscarValor('Assinados Dia', 1)), parseInt(buscarValor('Assinados Dia', 2)));
+
+        } catch (e) { console.error(e); }
+    }
+
+    // --- GRÁFICOS ---
+    function atualizarOuCriarGraficos(vA, lA, vD1, vD2) {
+        if (!chart1) {
+            chart1 = new Chart(document.getElementById('chartAssinadosDia'), { type: 'doughnut', data: { labels: ['Del 01', 'Del 02'], datasets: [{ data: [vD1, vD2], backgroundColor: ['#81C784', '#FFF176'] }] }, options: { responsive: true, maintainAspectRatio: false } });
+        } else { chart1.data.datasets[0].data = [vD1, vD2]; chart1.update('none'); }
+
+        if (!chart2) {
+            chart2 = new Chart(document.getElementById('chartAuditoresDia'), { type: 'bar', data: { labels: lA, datasets: [{ data: vA, backgroundColor: '#60a5fa' }] }, options: { responsive: true, maintainAspectRatio: false } });
+        } else { chart2.data.labels = lA; chart2.data.datasets[0].data = vA; chart2.update('none'); }
+    }
+
+    // --- INICIALIZAÇÃO ---
     window.addEventListener('DOMContentLoaded', () => {
         acionarRequisicaoInterna();
-        // Atualiza a cada 60 segundos
         setInterval(acionarRequisicaoInterna, 60000);
     });
-
-    // ... (Mantenha aqui as suas funções receberDadosDoGoogle e atualizarOuCriarGraficos)
-
-
-        Chart.register(ChartDataLabels);
-
-
-
-
-        let chart1 = null, chart2 = null;
-        let emExecucao = false;
-
-
-
-
-        function receberDadosDoGoogle(pacoteDados) {
-            emExecucao = false;
-            try {
-                if (!pacoteDados || !pacoteDados.relatorio) {
-                    document.getElementById('data-atualizacao').innerText = "Dados Inválidos!";
-                    return;
-                }
-
-
-
-
-                const icone = document.getElementById('icone-status');
-                icone.className = "fa-solid fa-circle-check text-emerald-400 animate-none";
-
-
-
-
-                const matrizRelatorio = pacoteDados.relatorio;
-
-
-
-
-                const dicionario = {};
-                matrizRelatorio.forEach(l => {
-                    if (l[0]) {
-                        const chave = l[0].toLowerCase().replace(/\s+/g, ' ').trim();
-                        dicionario[chave] = l;
-                    }
-                });
-
-
-
-
-                function buscarValor(nomeChave, indexColuna = 1, padrao = '0', ehMonetario = false) {
-                    const chaveFiltro = nomeChave.toLowerCase().replace(/\s+/g, ' ').trim();
-                    if (dicionario[chaveFiltro] && dicionario[chaveFiltro][indexColuna] !== undefined && dicionario[chaveFiltro][indexColuna] !== '') {
-                        let valorBruto = dicionario[chaveFiltro][indexColuna].toString().trim();
-                       
-                        if (ehMonetario) {
-                            if (valorBruto.includes('R$')) return valorBruto;
-                            let n = parseFloat(valorBruto.replace(/[^\d.,-]/g, '').replace(',', '.'));
-                            return isNaN(n) ? padrao : "R$ " + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                        }
-                       
-                        let numeroTratado = parseFloat(valorBruto);
-                        if (!isNaN(numeroTratado)) {
-                            return Math.round(numeroTratado).toString();
-                        }
-                        return valorBruto;
-                    }
-                    return padrao;
-                }
-
-
-
-
-                if (matrizRelatorio[0] && matrizRelatorio[0][4]) {
-                    document.getElementById('data-atualizacao').innerText = "DATA " + matrizRelatorio[0][4];
-                } else {
-                    document.getElementById('data-atualizacao').innerText = new Date().toLocaleDateString('pt-BR');
-                }
-
-
-
-
-                document.getElementById('aud-para-realizar').innerText = buscarValor('Auditorias para realizar', 1, '0');
-                document.getElementById('aud-dia').innerText           = buscarValor('Auditorias Realizadas Dia', 1, '0');
-                document.getElementById('aud-mes').innerText           = buscarValor('Auditorias Realizadas Mês', 1, '0');
-               
-                document.getElementById('ass-pend-del1').innerText     = buscarValor('Assinaturas à realizar', 1, '0');
-                document.getElementById('ass-pend-del2').innerText     = buscarValor('Assinaturas à realizar', 2, '0');
-
-
-
-
-                document.getElementById('meta-diaria').innerText        = buscarValor('Meta Diária', 1, '0');
-                document.getElementById('nr-auditores').innerText       = buscarValor('Nr de Auditores', 1, '0');
-                document.getElementById('tot-aud-ano-geral').innerText = buscarValor('Total Auditorias Ano', 1, '0');
-
-
-
-
-                document.getElementById('arr-mes').innerText        = buscarValor('Valor Arrecadado', 2, 'R$ 0,00', true);
-                document.getElementById('arr-soma-total').innerText = buscarValor('Soma Total', 3, 'R$ 0,00', true);
-
-
-
-
-                document.getElementById('del1-mes').innerText       = buscarValor('Assinados Mês', 1, '0');
-                document.getElementById('del2-mes').innerText       = buscarValor('Assinados Mês', 2, '0');
-                document.getElementById('mobilizador-mes').innerText = buscarValor('Assinados Mês', 3, '0');
-
-
-
-
-                // Lógica Dinâmica Total Geral Assinaturas
-                let indiceColunaTotal = 4;
-                let valorTotalGeral = '0';
-                for (let r = matrizRelatorio.length - 1; r >= 0; r--) {
-                    let celula = matrizRelatorio[r][indiceColunaTotal];
-                    if (celula !== undefined && celula !== null && celula !== '') {
-                        let numTratado = parseFloat(celula);
-                        valorTotalGeral = !isNaN(numTratado) ? Math.round(numTratado).toString() : celula.toString();
-                        break;
-                    }
-                }
-                document.getElementById('tot-ass-ano-geral').innerText = buscarValor('Total Assinados Ano', 4, '0');
-
-
-
-
-                // Tabela de Alistamentos
-                document.getElementById('row-mt-d1').innerText  = buscarValor('SMIO - Alistamento MT', 1, '0');
-                document.getElementById('row-mt-d2').innerText  = buscarValor('SMIO - Alistamento MT', 2, '0');
-                document.getElementById('row-mnt-d1').innerText = buscarValor('SMIO - Alistamentos MNT', 1, '0');
-                document.getElementById('row-mnt-d2').innerText = buscarValor('SMIO - Alistamentos MNT', 2, '0');
-                document.getElementById('row-smio-tot-d1').innerText = buscarValor('SMIO - Total', 1, '0');
-                document.getElementById('row-smio-tot-d2').innerText = buscarValor('SMIO - Total', 2, '0');
-                document.getElementById('row-smif-d1').innerText = buscarValor('SMIF - Alistamentos MT', 1, '0');
-                document.getElementById('row-smif-d2').innerText = buscarValor('SMIF - Alistamentos MT', 2, '0');
-
-
-
-
-                // Lendo linha por linha os Auditores
-                let labelsAuditores = [];
-                let valoresAuditores = [];
-                let rIdx = -1;
-                let cIdx = -1;
-
-
-
-
-                for (let r = 0; r < matrizRelatorio.length; r++) {
-                    for (let c = 0; c < matrizRelatorio[r].length; c++) {
-                        if (matrizRelatorio[r][c] && matrizRelatorio[r][c].toString().trim() === "Auditores PRM") {
-                            rIdx = r;
-                            cIdx = c;
-                            break;
-                        }
-                    }
-                    if (rIdx !== -1) break;
-                }
-
-
-
-
-                if (rIdx !== -1) {
-                    for (let i = rIdx + 1; i < matrizRelatorio.length; i++) {
-                        let nome = matrizRelatorio[i][cIdx];    
-                        let valor = matrizRelatorio[i][cIdx + 1];
-                        if (!nome || nome.toString().trim() === "") break;
-                        labelsAuditores.push(nome.toString().trim());
-                        valoresAuditores.push(Math.round(parseFloat(valor)) || 0);
-                    }
-                }
-
-
-
-
-                if (labelsAuditores.length === 0) {
-                    labelsAuditores = ['TC Castilho', 'Cap Inchauspe', 'Ten Moretti', 'Ten Luciano', 'Ten Lourenço', 'Ten Ferreira', 'ST Adilio', 'Sgt Alencar', 'Sgt Duim', 'Cb Jobert', 'Sd Nathan', 'Sd Maxsswel', 'Sd Raí'];
-                    valoresAuditores = [7, 10, 0, 0, 0, 14, 8, 12, 15, 6, 9, 11, 5];
-                }
-
-
-
-
-                let d1DiaLimpo = Math.round(parseFloat(buscarValor('Assinados Dia', 1, '0'))) || 0;
-                let d2DiaLimpo = Math.round(parseFloat(buscarValor('Assinados Dia', 2, '0'))) || 0;
-                atualizarOuCriarGraficos(valoresAuditores, labelsAuditores, d1DiaLimpo, d2DiaLimpo);
-
-
-
-
-            } catch (erro) {
-                console.error(erro);
-                document.getElementById('data-atualizacao').innerText = "Erro ao processar!";
-            }
-        }
-
-
-
-
-        function acionarRequisicaoInterna() {
-            if (emExecucao) return;
-            emExecucao = true;
-            const icone = document.getElementById('icone-status');
-            icone.className = "fa-solid fa-spinner fa-spin text-emerald-400";
-           
-            google.script.run
-                .withSuccessHandler(receberDadosDoGoogle)
-                .withFailureHandler(function() {
-                    emExecucao = false;
-                    document.getElementById('data-atualizacao').innerText = "Conexão Instável... Tentando de novo";
-                })
-                .obterDadosEmTempoReal();
-        }
-
-
-        function atualizarOuCriarGraficos(valoresAuditores, labelsAuditores, valD1, valD2) {
-            const coresDelegados = ['#81C784', '#FFF176'];
-            const coresBordas3D = ['#16a34a', '#ca8a04'];
-
-
-
-
-            // 1. GRÁFICO DE PIZZA
-            if (chart1 === null) {
-                const ctx1 = document.getElementById('chartAssinadosDia').getContext('2d');
-                chart1 = new Chart(ctx1, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Delegado 01', 'Delegado 02'],
-                        datasets: [{
-                            data: [valD1, valD2],
-                            backgroundColor: coresDelegados,
-                            borderColor: coresBordas3D,
-                            borderWidth: 2.0
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        cutout: '25%',
-                        plugins: {
-                            legend: { position: 'bottom', labels: { font: { size: 25, weight: 'bold' }, boxWidth: 25 } },
-                            datalabels: {
-                                display: true,
-                                color: '#0f172a',
-                                font: { size: 25, weight: 'black' },
-                                formatter: function(value) { return value > 0 ? value : ''; }
-                            }
-                        }
-                    }
-                });
-            } else {
-                chart1.data.datasets[0].data = [valD1, valD2];
-                chart1.update('none');
-            }
-
-
-
-
-            // 2. GRÁFICO DE BARRAS DOS AUDITORES
-            if (chart2 === null) {
-                const ctx2 = document.getElementById('chartAuditoresDia').getContext('2d');
-                const gradienteBarra = ctx2.createLinearGradient(0, 0, 0, 180);
-                gradienteBarra.addColorStop(0, '#60a5fa');  
-                gradienteBarra.addColorStop(1, '#1d4ed8');  
-
-
-
-
-                chart2 = new Chart(ctx2, {
-                    type: 'bar',
-                    data: {
-                        labels: labelsAuditores,
-                        datasets: [{
-                            data: valoresAuditores,
-                            backgroundColor: gradienteBarra,
-                            borderColor: '#1e40af',
-                            borderWidth: 3,
-                            borderRadius: 3
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        autoPadding: true,
-                        plugins: {
-                            legend: { display: false },
-                            datalabels: {
-                                display: true,
-                                anchor: 'center',  
-                                align: 'center',  
-                                offset: 0,        
-                                color: '#ffffff',  
-                                font: { size: 30, weight: 'black' },
-                                formatter: function(value) { return value > 0 ? value : ''; }
-                            }
-                        },
-                        scales: {
-                            y: {
-                                display: false,
-                                beginAtZero: true
-                            },
-                            x: {
-                                ticks: { maxRotation: 0, minRotation: 0, font: { size: 14, weight: 'bold' }, color: '#0f172a' }
-                            }
-                        }
-                    }
-                });
-            } else {
-                chart2.data.labels = labelsAuditores;
-                chart2.data.datasets[0].data = valoresAuditores;
-               
-                // Forçamos a reescrita completa das opções do plugin para não haver falhas
-                chart2.options.plugins.datalabels = {
-                    display: true,
-                    anchor: 'center',
-                    align: 'top',
-                    offset: 0,
-                    color: '#000000', /* AMARELO FORTE para teste */
-                    font: {
-                        size:48, /* TAMANHO 38 */
-                        family: "'Segoe UI', Tahoma, sans-serif",
-                        weight: '900'
-                    },
-                    formatter: function(value) { return value > 0 ? value : ''; }
-                };
-               
-                chart2.update('none');
-            }
-        }
-
-
-
-
-        window.addEventListener('DOMContentLoaded', acionarRequisicaoInterna);
-        setInterval(acionarRequisicaoInterna, 5000);
-    </script>
+</script>
 </body>
 </html>
 
