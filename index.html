@@ -266,8 +266,11 @@
         const icone = document.getElementById('icone-status');
         if (icone) icone.className = "fa-solid fa-spinner fa-spin text-emerald-400";
 
-        // Verifica se roda dentro do Google ou via GitHub
-        if (typeof google !== 'undefined' && google.script) {
+        // VERIFICAÇÃO MAIS SEGURA:
+        // Se a URL não for a do Google ou se o ambiente não for o do script, force o fetch
+        const isGoogleEnvironment = (typeof google !== 'undefined' && google.script);
+
+        if (isGoogleEnvironment) {
             google.script.run
                 .withSuccessHandler(receberDadosDoGoogle)
                 .withFailureHandler(() => { 
@@ -276,11 +279,16 @@
                 })
                 .obterDadosEmTempoReal();
         } else {
+            // MODO GITHUB / NAVEGADOR
             fetch(URL_API)
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) throw new Error("Falha na rede");
+                    return response.json();
+                })
                 .then(data => receberDadosDoGoogle(data))
                 .catch(error => {
                     emExecucao = false;
+                    console.error("Erro no GitHub:", error);
                     document.getElementById('data-atualizacao').innerText = "Erro no GitHub...";
                 });
         }
@@ -359,7 +367,7 @@
     // --- INICIALIZAÇÃO ---
     window.addEventListener('DOMContentLoaded', () => {
         acionarRequisicaoInterna();
-        setInterval(acionarRequisicaoInterna, 60000);
+        setInterval(acionarRequisicaoInterna, 10000);
     });
 </script>
 </body>
