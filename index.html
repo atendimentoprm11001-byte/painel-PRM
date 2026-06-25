@@ -16,17 +16,21 @@
     }
 
 
+
+
     .box-depth-3d {
-    /* Aumentei a distância da sombra (y) e a difusão (blur) para dar mais sensação de elevação */
-    filter: drop-shadow(0px 10px 15px rgba(0, 0, 0, 0.2));
-    border: 1px solid #e2e8f0;
+        filter: drop-shadow(4px 6px 6px rgba(15, 23, 42, 0.08));
     }
+
+
 
 
     .cartao-amarelo-branco {
         background: linear-gradient(135deg, #fef08a 0%, #ffffff 100%);
         border: 2px solid #facc15;
     }
+
+
 
 
     /* Nova animação para chamar a atenção */
@@ -37,6 +41,8 @@
     }
 
 
+
+
     .animacao-alerta {
         animation: piscar-alerta 2s infinite;
         /* Mantém o limite do cartão mesmo quando pisca */
@@ -44,10 +50,12 @@
     }
      </style>
 </head>
-<body class="p-3 h-screen flex flex-col justify-between box-border text-slate-900 selection:bg-emerald-500">
+<body class="p- h-screen flex flex-col justify-between box-border text-slate-900 selection:bg-emerald-500">
 
 
-    <div class="w-full max-w-[95%] mx-auto flex flex-col justify-between h-full space-y-2">
+
+
+    <div class="w-full max-w-[96%] mx-auto flex flex-col justify-between h-full space-y-2">
        
         <header class="text-center bg-slate-950 text-white rounded-xl py-3 px-6 shadow-md relative border-b-4 border-emerald-500 flex flex-col justify-center min-h-[70px]">
             <h1 class="text-3xl md:text-4xl font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-200 to-emerald-500">
@@ -58,9 +66,11 @@
             </p>
             <div class="absolute top-1/2 right-6 -translate-y-1/2 text-xs bg-slate-800 px-3 py-1.5 rounded border border-slate-700 text-slate-300 font-mono flex items-center gap-2">
                 <i class="fa-solid fa-spinner fa-spin text-emerald-400" id="icone-status"></i>
-                <span id="data-atualizacao" class="text-xl font-bold italic">Conectando...</span>
+                <span id="data-atualizacao">Conectando...</span>
             </div>
         </header>
+
+
 
 
         <div class="grid grid-cols-1 xl:grid-cols-4 gap-3 items-stretch">
@@ -100,6 +110,8 @@
                 </div>
 
 
+
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
                     <div class="bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-200 flex justify-between items-center h-12">
                         <span class="text-base font-black text-slate-500 uppercase tracking-wide">Meta (Auditores):</span>
@@ -111,6 +123,8 @@
                     </div>
                 </div>
             </div>
+
+
 
 
             <div class="xl:col-span-1 flex flex-col justify-between gap-2">
@@ -131,7 +145,11 @@
             </div>
 
 
+
+
         </div>
+
+
 
 
         <div class="bg-white p-4 rounded-xl border border-gray-200 box-depth-3d flex-grow flex flex-col justify-between min-h-[240px] max-h-[310px]">
@@ -140,6 +158,8 @@
                 <canvas id="chartAuditoresDia"></canvas>
             </div>
         </div>
+
+
 
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 items-stretch min-h-[200px] max-h-[250px]">
@@ -169,12 +189,16 @@
             </div>
 
 
+
+
             <div class="bg-white p-3.5 rounded-xl border border-gray-200 box-depth-3d flex flex-col justify-between">
                 <h3 class="text-base font-black text-slate-800 uppercase tracking-widest"><i class="fa-solid fa-chart-pie mr-1 text-emerald-500"></i>Assinados no Dia</h3>
                 <div class="relative w-full flex-grow h-32 flex justify-center mt-1">
                     <canvas id="chartAssinadosDia"></canvas>
                 </div>
             </div>
+
+
 
 
             <div class="bg-white p-3.5 rounded-xl border border-gray-200 box-depth-3d flex flex-col justify-between">
@@ -215,18 +239,66 @@
             </div>
 
 
+
+
         </div>
+
+
 
 
     </div>
 
 
-    <script>
+
+
+   <script>
+    // URL gerada após a implantação do App da Web no Google
+    const URL_API = "COLE_AQUI_A_URL_DO_SEU_WEB_APP_GERADA_NO_PASSO_ANTERIOR?modo=api";
+
+    function acionarRequisicaoInterna() {
+        // Verifica se estamos rodando dentro do Google ou no GitHub
+        if (typeof google !== 'undefined' && google.script) {
+            // MODO GOOGLE: usa o canal interno (rápido)
+            google.script.run
+                .withSuccessHandler(receberDadosDoGoogle)
+                .withFailureHandler(() => { 
+                    document.getElementById('data-atualizacao').innerText = "Erro Google..."; 
+                })
+                .obterDadosEmTempoReal();
+        } else {
+            // MODO GITHUB: usa a API externa via Fetch
+            fetch(URL_API)
+                .then(response => {
+                    if (!response.ok) throw new Error("Falha na rede");
+                    return response.json();
+                })
+                .then(data => receberDadosDoGoogle(data))
+                .catch(error => {
+                    console.error("Erro ao buscar API:", error);
+                    document.getElementById('data-atualizacao').innerText = "Erro no GitHub...";
+                });
+        }
+    }
+
+    // Inicialização segura
+    window.addEventListener('DOMContentLoaded', () => {
+        acionarRequisicaoInterna();
+        // Atualiza a cada 60 segundos
+        setInterval(acionarRequisicaoInterna, 60000);
+    });
+
+    // ... (Mantenha aqui as suas funções receberDadosDoGoogle e atualizarOuCriarGraficos)
+
+
         Chart.register(ChartDataLabels);
+
+
 
 
         let chart1 = null, chart2 = null;
         let emExecucao = false;
+
+
 
 
         function receberDadosDoGoogle(pacoteDados) {
@@ -238,11 +310,17 @@
                 }
 
 
+
+
                 const icone = document.getElementById('icone-status');
                 icone.className = "fa-solid fa-circle-check text-emerald-400 animate-none";
 
 
+
+
                 const matrizRelatorio = pacoteDados.relatorio;
+
+
 
 
                 const dicionario = {};
@@ -252,6 +330,8 @@
                         dicionario[chave] = l;
                     }
                 });
+
+
 
 
                 function buscarValor(nomeChave, indexColuna = 1, padrao = '0', ehMonetario = false) {
@@ -275,11 +355,15 @@
                 }
 
 
+
+
                 if (matrizRelatorio[0] && matrizRelatorio[0][4]) {
                     document.getElementById('data-atualizacao').innerText = "DATA " + matrizRelatorio[0][4];
                 } else {
                     document.getElementById('data-atualizacao').innerText = new Date().toLocaleDateString('pt-BR');
                 }
+
+
 
 
                 document.getElementById('aud-para-realizar').innerText = buscarValor('Auditorias para realizar', 1, '0');
@@ -290,18 +374,26 @@
                 document.getElementById('ass-pend-del2').innerText     = buscarValor('Assinaturas à realizar', 2, '0');
 
 
+
+
                 document.getElementById('meta-diaria').innerText        = buscarValor('Meta Diária', 1, '0');
                 document.getElementById('nr-auditores').innerText       = buscarValor('Nr de Auditores', 1, '0');
                 document.getElementById('tot-aud-ano-geral').innerText = buscarValor('Total Auditorias Ano', 1, '0');
+
+
 
 
                 document.getElementById('arr-mes').innerText        = buscarValor('Valor Arrecadado', 2, 'R$ 0,00', true);
                 document.getElementById('arr-soma-total').innerText = buscarValor('Soma Total', 3, 'R$ 0,00', true);
 
 
+
+
                 document.getElementById('del1-mes').innerText       = buscarValor('Assinados Mês', 1, '0');
                 document.getElementById('del2-mes').innerText       = buscarValor('Assinados Mês', 2, '0');
                 document.getElementById('mobilizador-mes').innerText = buscarValor('Assinados Mês', 3, '0');
+
+
 
 
                 // Lógica Dinâmica Total Geral Assinaturas
@@ -318,6 +410,8 @@
                 document.getElementById('tot-ass-ano-geral').innerText = buscarValor('Total Assinados Ano', 4, '0');
 
 
+
+
                 // Tabela de Alistamentos
                 document.getElementById('row-mt-d1').innerText  = buscarValor('SMIO - Alistamento MT', 1, '0');
                 document.getElementById('row-mt-d2').innerText  = buscarValor('SMIO - Alistamento MT', 2, '0');
@@ -329,11 +423,15 @@
                 document.getElementById('row-smif-d2').innerText = buscarValor('SMIF - Alistamentos MT', 2, '0');
 
 
+
+
                 // Lendo linha por linha os Auditores
                 let labelsAuditores = [];
                 let valoresAuditores = [];
                 let rIdx = -1;
                 let cIdx = -1;
+
+
 
 
                 for (let r = 0; r < matrizRelatorio.length; r++) {
@@ -348,6 +446,8 @@
                 }
 
 
+
+
                 if (rIdx !== -1) {
                     for (let i = rIdx + 1; i < matrizRelatorio.length; i++) {
                         let nome = matrizRelatorio[i][cIdx];    
@@ -359,15 +459,21 @@
                 }
 
 
+
+
                 if (labelsAuditores.length === 0) {
                     labelsAuditores = ['TC Castilho', 'Cap Inchauspe', 'Ten Moretti', 'Ten Luciano', 'Ten Lourenço', 'Ten Ferreira', 'ST Adilio', 'Sgt Alencar', 'Sgt Duim', 'Cb Jobert', 'Sd Nathan', 'Sd Maxsswel', 'Sd Raí'];
                     valoresAuditores = [7, 10, 0, 0, 0, 14, 8, 12, 15, 6, 9, 11, 5];
                 }
 
 
+
+
                 let d1DiaLimpo = Math.round(parseFloat(buscarValor('Assinados Dia', 1, '0'))) || 0;
                 let d2DiaLimpo = Math.round(parseFloat(buscarValor('Assinados Dia', 2, '0'))) || 0;
                 atualizarOuCriarGraficos(valoresAuditores, labelsAuditores, d1DiaLimpo, d2DiaLimpo);
+
+
 
 
             } catch (erro) {
@@ -377,42 +483,29 @@
         }
 
 
-        // --- VERSÃO HÍBRIDA DO ADAPTADOR ---
-<script>
-    // 1. A URL do seu Web App (do Google Script)
-    const URL_BACKEND = "https://script.google.com/macros/s/AKfycbw8AdPR9CmBc6M1SG4r8O-4lQ7F-3WZO9I_ow28B1gu/exec?dados=true";
 
-    async function acionarRequisicaoInterna() {
-        try {
-            document.getElementById('status').innerText = "Buscando dados...";
-            
-            // Faz a requisição para o Google Apps Script
-            const resposta = await fetch(URL_BACKEND);
-            
-            if (!resposta.ok) throw new Error("Erro de servidor");
-            
-            const pacote = await resposta.json();
-            
-            // O pacote.relatorio contém a matriz de dados da planilha
-            renderizarInterface(pacote);
-            
-            document.getElementById('status').innerText = "Atualizado às " + new Date().toLocaleTimeString();
-        } catch (erro) {
-            console.error("Erro na busca:", erro);
-            document.getElementById('status').innerText = "Erro de Conexão. Verifique o Console (F12).";
-            // Tenta novamente após 30 segundos
-            setTimeout(acionarRequisicaoInterna, 30000);
+
+        function acionarRequisicaoInterna() {
+            if (emExecucao) return;
+            emExecucao = true;
+            const icone = document.getElementById('icone-status');
+            icone.className = "fa-solid fa-spinner fa-spin text-emerald-400";
+           
+            google.script.run
+                .withSuccessHandler(receberDadosDoGoogle)
+                .withFailureHandler(function() {
+                    emExecucao = false;
+                    document.getElementById('data-atualizacao').innerText = "Conexão Instável... Tentando de novo";
+                })
+                .obterDadosEmTempoReal();
         }
-    }
 
-    // Inicia o processo
-    acionarRequisicaoInterna();
-    setInterval(acionarRequisicaoInterna, 30000);
-</script>
 
         function atualizarOuCriarGraficos(valoresAuditores, labelsAuditores, valD1, valD2) {
             const coresDelegados = ['#81C784', '#FFF176'];
             const coresBordas3D = ['#16a34a', '#ca8a04'];
+
+
 
 
             // 1. GRÁFICO DE PIZZA
@@ -450,12 +543,16 @@
             }
 
 
+
+
             // 2. GRÁFICO DE BARRAS DOS AUDITORES
             if (chart2 === null) {
                 const ctx2 = document.getElementById('chartAuditoresDia').getContext('2d');
                 const gradienteBarra = ctx2.createLinearGradient(0, 0, 0, 180);
                 gradienteBarra.addColorStop(0, '#60a5fa');  
                 gradienteBarra.addColorStop(1, '#1d4ed8');  
+
+
 
 
                 chart2 = new Chart(ctx2, {
@@ -521,12 +618,13 @@
         }
 
 
+
+
         window.addEventListener('DOMContentLoaded', acionarRequisicaoInterna);
-        function cicloSeguro() {
-    acionarRequisicaoInterna();
-    setTimeout(cicloSeguro, 5000); // Aguarda 60 segundos antes da próxima execução
-}
-window.addEventListener('DOMContentLoaded', cicloSeguro);
+        setInterval(acionarRequisicaoInterna, 5000);
     </script>
 </body>
 </html>
+
+
+
